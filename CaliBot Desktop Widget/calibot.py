@@ -12,10 +12,11 @@ if not openai_key:
 
 openai.api_key = openai_key
 
+
 class CircleButton(QPushButton):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(15, 15)
+        self.setFixedSize(18, 18)
         self.setMask(self.create_ellipse_mask(self.size()))
         self.setStyleSheet("background-color: rgba(128, 128, 128, 0.8); border-radius: 7.5px;")
 
@@ -48,7 +49,7 @@ class ChatWidget(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setGeometry(100, 100, 330, 230)
+        self.setGeometry(100, 100, 450, 500)
 
         self.chat_layout = QVBoxLayout(self)
         self.chat_box = QTextEdit()
@@ -77,7 +78,6 @@ class ChatWidget(QWidget):
         self.user_input_layout.addWidget(self.send_button)
         self.user_input_layout.addWidget(self.clear_button)
 
-        # Set the user's text box color
         user_input_palette = self.user_input.palette()
         user_input_palette.setColor(QPalette.Base, self.send_button.palette().color(QPalette.Button))
         user_input_palette.setColor(QPalette.Text, QColor(255, 255, 255))
@@ -103,8 +103,8 @@ class ChatWidget(QWidget):
         user_input = self.user_input.toPlainText()
         self.update_chat_box("Waiting for response...")
 
-        # Use QTimer to delay the chatbot response
         QTimer.singleShot(200, lambda: self.generate_response(user_input))
+        self.user_input.clear()
 
     def generate_response(self, user_input):
         response = self.get_openai_response(user_input)
@@ -118,12 +118,14 @@ class ChatWidget(QWidget):
         openai.api_key = openai.api_key
         response = openai.Completion.create(
             engine="text-davinci-003",
-            prompt="You are CaliBot. Reply using 250 words or less while maintaining proper language etiquette: " + user_input,
-            max_tokens=350,
-            temperature=0.7,
-            n=1
+            prompt="You are CaliBot. Reply using 125 words or less while maintaining proper language etiquette: " + user_input,
+            temperature=1.25,
+            max_tokens=200,
+            top_p=0.8,
+            frequency_penalty=0.25,
+            presence_penalty=0.25
         )
-        return response['choices'][0]['text']
+        return response['choices'][0]['text'].replace('\n', '')
 
     def update_chat_box(self, response):
         self.chat_box.setPlainText(response)
@@ -149,12 +151,47 @@ class ChatWidget(QWidget):
     def toggle_chatbox_size(self):
         current_width = self.width()
         current_height = self.height()
-        if current_width == 330 and current_height == 230:
-            self.setGeometry(self.x(), self.y(), 400, 500)
-        elif current_width == 400 and current_height == 500:
-            self.setGeometry(self.x(), self.y(), 50, 50)
+
+        if current_width == 450 and current_height == 500:
+            self.chat_box.show()
+            self.user_input.show()
+            self.send_button.show()
+            self.clear_button.show()
+            self.circle_button.show()
+            self.setGeometry(self.x(), self.y(), 450, 230)
+            if hasattr(self, 'large_circle_button'):
+                self.large_circle_button.hide() 
+
+        elif current_width == 450 and current_height == 230:
+            self.chat_box.hide()
+            self.user_input.hide()
+            self.send_button.hide()
+            self.clear_button.hide()
+
+            if not hasattr(self, 'large_circle_button'):
+                self.large_circle_button = CircleButton(self)
+                self.large_circle_button.move(
+                    self.circle_button.pos())
+
+            self.large_circle_button.show()
+
+            circle_button_new_x = self.large_circle_button.width()
+            circle_button_new_y = self.large_circle_button.height()
+            self.circle_button.move(circle_button_new_x, circle_button_new_y)
+            self.circle_button.raise_()
+
+            self.setGeometry(self.x(), self.y(), self.large_circle_button.width(), self.large_circle_button.height())
         else:
-            self.setGeometry(self.x(), self.y(), 330, 230)
+            self.chat_box.show()
+            self.user_input.show()
+            self.send_button.show()
+            self.clear_button.show()
+            self.circle_button.show()
+
+            if hasattr(self, 'large_circle_button'):
+                self.large_circle_button.hide() 
+
+            self.setGeometry(self.x(), self.y(), 450, 500)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -172,7 +209,6 @@ class ChatWidget(QWidget):
 
 app = QApplication(sys.argv)
 
-# Change the color and transparency of the text box
 style = """
     QTextEdit {
         background-color: rgba(128, 128, 128, 0.05);
